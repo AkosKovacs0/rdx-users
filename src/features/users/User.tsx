@@ -2,9 +2,10 @@ import { connect } from "react-redux"
 import { useAppDispatch, useAppSelector } from "../../app/hooks"
 import { RootState } from "../../app/store"
 import { User, UserId, deleteById, getUserById } from "./usersSlice"
+import { EntityId } from "@reduxjs/toolkit"
 
 type UserProps = {
-  id: UserId
+  id: EntityId
   // user: User
 }
 // type StateProps = {
@@ -13,6 +14,10 @@ type UserProps = {
 export default function UserView({ id }: UserProps) {
   const dispatch = useAppDispatch()
   const user = useAppSelector((state) => getUserById(state, id))
+  if (!user) {
+    return null
+  }
+
   const name = `${user.firstName} ${user.lastName}`
   console.log("Rending user: ", user.email)
   return (
