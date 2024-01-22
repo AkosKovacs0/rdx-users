@@ -1,8 +1,8 @@
-import { useEffect } from "react"
+import { useEffect, useReducer } from "react"
 import { useAppDispatch, useAppSelector } from "../../app/hooks"
 import {
-  allUserIds,
   fetchUsers,
+  getUserById,
   getUserFilter,
   selectedUserIds,
   setFilter,
@@ -16,7 +16,9 @@ export default function Users() {
 
   useEffect(() => {
     dispatch(fetchUsers())
-  }, [])
+  }, [dispatch])
+
+  console.log("Rendering users", userIds, filter)
 
   return (
     <div>

@@ -1,13 +1,25 @@
-import { useAppSelector } from "../../app/hooks"
-import { UserId, getUserById } from "./usersSlice"
+import { connect } from "react-redux"
+import { useAppDispatch, useAppSelector } from "../../app/hooks"
+import { RootState } from "../../app/store"
+import { User, UserId, deleteById, getUserById } from "./usersSlice"
+import { EntityId } from "@reduxjs/toolkit"
 
 type UserProps = {
-  id: UserId
+  id: EntityId
+  // user: User
 }
-export default function User({ id }: UserProps) {
-  // const dispatch = useAppDispatch()
+// type StateProps = {
+//   user: User
+// }
+export default function UserView({ id }: UserProps) {
+  const dispatch = useAppDispatch()
   const user = useAppSelector((state) => getUserById(state, id))
+  if (!user) {
+    return null
+  }
+
   const name = `${user.firstName} ${user.lastName}`
+  console.log("Rending user: ", user.email)
   return (
     <div>
       <p>
@@ -19,6 +31,17 @@ export default function User({ id }: UserProps) {
       <p>
         <img src={user.image} alt={name} />
       </p>
+      <p>
+        <button onClick={() => dispatch(deleteById(id))}>Delete</button>
+      </p>
     </div>
   )
 }
+
+// function mapStateToProps(state: RootState, ownProps: UserProps) {
+//   return {
+//     user: getUserById(state, ownProps.id),
+//   }
+// }
+
+// export default connect(mapStateToProps)(UserView)

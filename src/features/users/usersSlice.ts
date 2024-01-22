@@ -1,7 +1,14 @@
-import { PayloadAction, createAsyncThunk, createSlice } from "@reduxjs/toolkit"
+import {
+  EntityId,
+  EntityState,
+  PayloadAction,
+  createAsyncThunk,
+  createEntityAdapter,
+  createSlice,
+} from "@reduxjs/toolkit"
 import { RootState } from "../../app/store"
 
-type User = {
+export type User = {
   id: number
   name: string
   firstName: string
@@ -26,14 +33,17 @@ export const fetchUsers = createAsyncThunk(
 
 type LoadingState = "idle" | "loading" | "failed"
 
-type Normalized<T, KeyType extends number | string | symbol = number> = {
-  ids: KeyType[]
-  values: Record<KeyType, T>
-}
+const usersAdapter = createEntityAdapter({
+  // Assume IDs are stored in a field other than `book.id`
+  selectId: (user: User) => user.id,
+  // Keep the "all IDs" array sorted based on book titles
+  sortComparer: (a, b) => a.id - b.id,
+})
 
 type UsersState = {
   loadingState: LoadingState
-  users: Normalized<User>
+  // users: Normalized<User>
+  users: EntityState<User>
   filter: string
   filteredIds: UserId[]
 }
@@ -42,30 +52,33 @@ const initialState: UsersState = {
   loadingState: "idle",
   filter: "",
   filteredIds: [],
-  users: {
-    ids: [],
-    values: {},
-  },
+  users: usersAdapter.getInitialState(),
 }
 
 export const usersSlice = createSlice({
   name: SLICE_NAME,
   initialState,
   reducers: {
+    deleteById: (state, action: PayloadAction<EntityId>) => {
+      usersAdapter.removeOne(state.users, action.payload)
+    },
     setFilter: (state, action: PayloadAction<string>) => {
-      state.filter = action.payload
-      const filter = action.payload.toLowerCase()
-      if (filter === "") {
-        state.filteredIds = state.users.ids
-        return
-      }
-      state.filteredIds = state.users.values
-        .filter((user) => {
-          return (
-            user.firstName.includes(filter) || user.lastName.includes(filter)
-          )
-        })
-        .map((user) => user.id)
+      // const term = action.payload.toLowerCase()
+      // if (term === "") {
+      //   state.filter = ""
+      //   state.filteredIds = state.users.ids
+      // } else {
+      //   state.filter = action.payload
+      //   state.filteredIds = state.users.ids.filter((id) => {
+      //     const user = state.users.values[id]
+      //     return (
+      //       user.firstName.toLowerCase().includes(term) ||
+      //       user.lastName.toLowerCase().includes(term) ||
+      //       user.email.toLowerCase().includes(term)
+      //     )
+      //   })
+      // }
+      console.log("not implemented", action)
     },
   },
   extraReducers: (builder) => {
@@ -75,11 +88,7 @@ export const usersSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loadingState = "idle"
-        action.payload.users.forEach((user) => {
-          state.users.ids.push(user.id)
-          state.users.values[user.id] = user
-        })
-        state.filteredIds = state.users.ids
+        usersAdapter.setAll(state.users, action.payload.users);
       })
       .addCase(fetchUsers.rejected, (state) => {
         state.loadingState = "failed"
@@ -88,12 +97,15 @@ export const usersSlice = createSlice({
   },
 })
 
-export const { setFilter } = usersSlice.actions
+export const { setFilter, deleteById } = usersSlice.actions
 
-export const allUserIds = (state: RootState) => state.users.users.ids
-export const selectedUserIds = (state: RootState) => state.users.filteredIds
+export const usersSelectors = usersAdapter.getSelectors()
+
+export const allUserIds = (state: RootState) =>
+  usersSelectors.selectIds(state.users.users)
+export const selectedUserIds = (state: RootState) => allUserIds(state)
 export const getUserFilter = (state: RootState) => state.users.filter
-export const getUserById = (state: RootState, id: UserId) =>
-  state.users.users.values[id]
+export const getUserById = (state: RootState, id: EntityId) =>
+  usersSelectors.selectById(state.users.users, id)
 
 export default usersSlice.reducer
