@@ -1,7 +1,7 @@
-import { PayloadAction, createAsyncThunk, createSlice } from "@reduxjs/toolkit"
+import { PayloadAction, createAsyncThunk, createSlice, current } from "@reduxjs/toolkit"
 import { RootState } from "../../app/store"
 
-type User = {
+export type User = {
   id: number
   name: string
   firstName: string
@@ -16,9 +16,7 @@ type UsersResponse = {
 
 export type UserId = User["id"]
 const SLICE_NAME = "users"
-export const fetchUsers = createAsyncThunk(
-  `${SLICE_NAME}/fetchUsers`,
-  async () => {
+export const fetchUsers = createAsyncThunk(`${SLICE_NAME}/fetchUsers`, async () => {
     const response = await fetch("https://dummyjson.com/users")
     return (await response.json()) as Promise<UsersResponse>
   },
@@ -52,20 +50,36 @@ export const usersSlice = createSlice({
   name: SLICE_NAME,
   initialState,
   reducers: {
-    setFilter: (state, action: PayloadAction<string>) => {
-      state.filter = action.payload
-      const filter = action.payload.toLowerCase()
-      if (filter === "") {
-        state.filteredIds = state.users.ids
-        return
+    deleteById: (state, action: PayloadAction<UserId>) => {
+      const id = action.payload;
+      const ids = state.users.ids.filter((uid) => uid !== id);
+      const userValues = { ...state.users.values };
+      delete userValues[id];
+      return {
+        ...state,
+        filteredIds: state.filteredIds.filter((fi) => fi !== id),
+        users: {
+          ids,
+          values: userValues,
+        },
       }
-      state.filteredIds = state.users.values
-        .filter((user) => {
+    },
+    setFilter: (state, action: PayloadAction<string>) => {
+      const term = action.payload.toLowerCase()
+      if (term === "") {
+        state.filter = ""
+        state.filteredIds = state.users.ids
+      } else {
+        state.filter = action.payload
+        state.filteredIds = state.users.ids.filter((id) => {
+          const user = state.users.values[id]
           return (
-            user.firstName.includes(filter) || user.lastName.includes(filter)
+            user.firstName.toLowerCase().includes(term) ||
+            user.lastName.toLowerCase().includes(term) ||
+            user.email.toLowerCase().includes(term)
           )
         })
-        .map((user) => user.id)
+      }
     },
   },
   extraReducers: (builder) => {
@@ -75,6 +89,7 @@ export const usersSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loadingState = "idle"
+        state.users.ids = []
         action.payload.users.forEach((user) => {
           state.users.ids.push(user.id)
           state.users.values[user.id] = user
@@ -88,7 +103,7 @@ export const usersSlice = createSlice({
   },
 })
 
-export const { setFilter } = usersSlice.actions
+export const { setFilter, deleteById } = usersSlice.actions
 
 export const allUserIds = (state: RootState) => state.users.users.ids
 export const selectedUserIds = (state: RootState) => state.users.filteredIds
